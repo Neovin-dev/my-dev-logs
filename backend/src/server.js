@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import http from "node:http";
+import pool from "./db.js";
 
 function sendHTML(response, html) {
   response.writeHead(200, {
@@ -48,16 +49,40 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (request.method === "GET" && request.url === "/devlogs") {
+    const result = await pool.query(`
+      SELECT title, slug, content, published_at
+      FROM devlogs
+      WHERE published_at IS NOT NULL
+      ORDER BY published_at DESC
+      `);
+
+    const devlogs = result.rows;
+
+    const html = devlogs
+      .map(
+        (devlog) =>
+          `
+         <article>
+          <h2>
+            <a href="/devlogs/${devlog.slug}">
+              ${devlog.title}
+            </a>
+          </h2>
+          <div class="meta">
+            ${devlog.published_at.toDateString()}
+          </div>
+        </article>
+        `,
+      )
+      //The important detail is that map() returns an array.
+      .join();
+    // console.log("HTML", html);
     return sendHTML(
       response,
-      `
-      <h1>Devlogs</h1>
-      <article>
-        <h2>Understanding Browser Rendering</h2>
-        <a href="/devlogs/browser-rendering">
-          Read devlog
-        </a>
-      </article>`,
+      `<main>
+        <h1>Devlogs</h1>
+        ${html}
+      </main>`,
     );
   }
 
@@ -90,9 +115,3 @@ const serverPort = 3000;
 server.listen(serverPort, () => {
   console.log(`Server running is running at ${serverPort}`);
 });
-
-import pool from "./db.js";
-
-const result = await pool.query("SELECT NOW()");
-
-console.log(result.rows);
