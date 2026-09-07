@@ -90,3 +90,9 @@ const serverPort = 3000;
 server.listen(serverPort, () => {
   console.log(`Server running is running at ${serverPort}`);
 });
+
+import pool from "./db.js";
+
+const result = await pool.query("SELECT NOW()");
+
+console.log(result.rows);
